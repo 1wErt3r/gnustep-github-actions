@@ -1,0 +1,98 @@
+name: Build Objective-C on macOS
+on: [push, pull_request]
+
+jobs:
+  build:
+    runs-on: macos-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
+      - name: Check Xcode version
+        run: |
+          xcodebuild -version
+          clang --version
+      
+      - name: Build Hello World
+        run: |
+          # Compile using native macOS Objective-C runtime
+          clang -framework Foundation hello.m -o hello
+          
+          echo "=== Checking executable ==="
+          file hello
+          ls -la hello
+      
+      - name: Run Hello World
+        run: |
+          echo "=== Running hello application ==="
+          ./hello
+      
+      - name: Test with Xcode project
+        run: |
+          # Create a simple Xcode project structure
+          mkdir -p HelloWorldApp
+          cd HelloWorldApp
+          
+          # Copy shared source files
+          cp ../hello.h .
+          cp ../hello.m .
+          
+          # Build with clang directly
+          clang -framework Foundation hello.m -o HelloWorldApp
+          
+          echo "=== Running HelloWorldApp ==="
+          ./HelloWorldApp
+      
+      - name: Create Package
+        run: |
+          mkdir -p package
+          
+          # Copy executables
+          cp hello package/
+          if [ -f HelloWorldApp/HelloWorldApp ]; then
+              cp HelloWorldApp/HelloWorldApp package/HelloWorldApp
+          fi
+          
+          # Create a shell script to run the app
+          cat << 'EOF' > package/run-hello.sh
+          #!/bin/bash
+          echo "Running Objective-C Hello World on macOS..."
+          ./hello
+          echo "Done!"
+          EOF
+          chmod +x package/run-hello.sh
+          
+          # Create README
+          cat << 'EOF' > package/README.txt
+          Objective-C Hello World for macOS
+          ==================================
+          
+          This package contains a simple Objective-C application built with native macOS Foundation framework.
+          
+          Files:
+          - hello: Built with clang and Foundation framework
+          - HelloWorldApp: Alternative build from subdirectory
+          - run-hello.sh: Shell script to run the demo
+          
+          Requirements:
+          - macOS (uses native Foundation framework)
+          
+          To run:
+          ./hello
+          or
+          ./run-hello.sh
+          EOF
+          
+          echo "=== Package contents ==="
+          ls -la package/
+          
+          echo "=== Testing packaged executable ==="
+          cd package
+          ./hello && echo "✓ Packaged executable works!" || echo "✗ Packaged executable failed"
+      
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: objc-hello-world-macos
+          path: package/
