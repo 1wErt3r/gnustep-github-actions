@@ -10,6 +10,10 @@ SDL2HelloWorld_OBJC_FILES = \
 
 SDL2HelloWorld_OBJCFLAGS = -fobjc-arc
 SDL2HelloWorld_CPPFLAGS = -I/usr/include/SDL2 -I/mingw64/include/SDL2
-SDL2HelloWorld_LDFLAGS = -lSDL2 -lSDL2_ttf
+ifeq ($(findstring mingw,$(GNUSTEP_TARGET_OS)),mingw)
+    SDL2HelloWorld_LDFLAGS = -lSDL2main -lSDL2 -lSDL2_ttf
+else
+    SDL2HelloWorld_LDFLAGS = -lSDL2 -lSDL2_ttf
+endif
 
 include $(GNUSTEP_MAKEFILES)/tool.make

@@ -250,7 +250,7 @@ jobs:
                 SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
                 -o sdl_hello.exe \
                 `gnustep-config --base-libs` \
-                -lSDL2 -lSDL2_ttf
+                -lSDL2main -lSDL2 -lSDL2_ttf
           
           echo "=== Checking SDL2 executable ==="
           file sdl_hello.exe
