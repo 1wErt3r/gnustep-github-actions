@@ -1,0 +1,19 @@
+# Emacs temporary files
+*~
+\#*\#
+.\#*
+
+# Build artifacts
+*.o
+*.so
+*.dylib
+*.dll
+*.exe
+obj/
+build/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db

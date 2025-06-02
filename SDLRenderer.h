@@ -1,5 +1,9 @@
 #import <Foundation/Foundation.h>
+#ifdef __APPLE__
+#import <SDL.h>
+#else
 #import <SDL2/SDL.h>
+#endif
 #import "SDLWindow.h"
 
 @interface SDLRenderer : NSObject

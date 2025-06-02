@@ -105,10 +105,11 @@ jobs:
           echo "SDL2 path: $SDL2_PATH"
           echo "SDL2_ttf path: $SDL2_TTF_PATH"
           
-          # Build SDL2 Hello World
+          # Build SDL2 Hello World with ARC
           clang -framework Foundation \
-                -I"$SDL2_PATH/include" \
-                -I"$SDL2_TTF_PATH/include" \
+                -fobjc-arc \
+                -I"$SDL2_PATH/include/SDL2" \
+                -I"$SDL2_TTF_PATH/include/SDL2" \
                 -L"$SDL2_PATH/lib" \
                 -L"$SDL2_TTF_PATH/lib" \
                 SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \

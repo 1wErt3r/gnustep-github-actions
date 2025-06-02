@@ -1,6 +1,11 @@
 #import <Foundation/Foundation.h>
+#ifdef __APPLE__
+#import <SDL.h>
+#import <SDL_ttf.h>
+#else
 #import <SDL2/SDL.h>
 #import <SDL2/SDL_ttf.h>
+#endif
 #import "SDLRenderer.h"
 
 @interface TextRenderer : NSObject
