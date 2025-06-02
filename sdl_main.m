@@ -1,7 +1,11 @@
 #import <Foundation/Foundation.h>
 #import "HelloWorldApp.h"
 
+#ifdef _WIN32
+int SDL_main(int argc, char * argv[]) {
+#else
 int main(int argc, const char * argv[]) {
+#endif
     @autoreleasepool {
         NSLog(@"Starting SDL2 Hello World Application");
         
