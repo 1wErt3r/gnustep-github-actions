@@ -1,0 +1,169 @@
+name: Build GNUstep on Linux
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      CC: clang
+      CXX: clang++
+      LD: ld.lld
+      LDFLAGS: -fuse-ld=lld
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Install prerequisites
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang \
+            lld \
+            git \
+            cmake \
+            make \
+            pkg-config \
+            libffi-dev \
+            libicu-dev \
+            libxml2-dev \
+            libxslt1-dev \
+            libssl-dev \
+            libgnutls28-dev \
+            libavahi-client-dev \
+            libblocksruntime-dev \
+            libkqueue-dev \
+            libpthread-workqueue-dev \
+            libjpeg-dev \
+            libtiff-dev \
+            libpng-dev \
+            libcups2-dev \
+            libfreetype6-dev \
+            libcairo2-dev \
+            libxt-dev \
+            libgl1-mesa-dev
+      
+      - name: Build and install libobjc2
+        run: |
+          git clone --recurse-submodules --branch v2.2.1 https://github.com/gnustep/libobjc2
+          cd libobjc2
+          mkdir build && cd build
+          cmake .. \
+            -DCMAKE_BUILD_TYPE=RelWithDebInfo \
+            -DCMAKE_C_COMPILER=clang \
+            -DCMAKE_CXX_COMPILER=clang++ \
+            -DCMAKE_INSTALL_PREFIX=/usr
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+      
+      - name: Build and install GNUstep Make
+        run: |
+          git clone --branch make-2_9_3 https://github.com/gnustep/tools-make
+          cd tools-make
+          ./configure \
+            --prefix=/usr \
+            --with-config-file=/usr/etc/GNUstep.conf \
+            --with-layout=fhs \
+            --enable-native-objc-exceptions \
+            --enable-objc-arc \
+            --enable-install-ld-so-conf \
+            CC=clang \
+            CXX=clang++ \
+            LDFLAGS="-fuse-ld=lld"
+          make -j$(nproc)
+          sudo make install
+          # Source GNUstep environment
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
+          echo "GNUSTEP_MAKEFILES=$GNUSTEP_MAKEFILES" >> $GITHUB_ENV
+      
+      - name: Build and install GNUstep Base
+        run: |
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
+          git clone --branch base-1_30_0 https://github.com/gnustep/libs-base
+          cd libs-base
+          ./configure \
+            --disable-iconv \
+            --disable-tls \
+            CC=clang \
+            CXX=clang++ \
+            LDFLAGS="-fuse-ld=lld"
+          make -j$(nproc)
+          sudo make install
+          sudo ldconfig
+      
+      - name: Test Hello World
+        run: |
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
+          
+          cat << 'EOF' > main.m
+          #import <Foundation/Foundation.h>
+          
+          int main(int argc, const char * argv[]) {
+            @autoreleasepool {
+              NSLog(@"Hello, World!");
+              
+              // Test some basic Foundation functionality
+              NSString *str = @"GNUstep is working!";
+              NSLog(@"Message: %@", str);
+              
+              NSArray *array = @[@"One", @"Two", @"Three"];
+              NSLog(@"Array count: %lu", (unsigned long)[array count]);
+              
+              NSDictionary *dict = @{@"key": @"value", @"number": @42};
+              NSLog(@"Dictionary: %@", dict);
+            }
+            return 0;
+          }
+          EOF
+          
+          # Compile and run
+          clang `gnustep-config --objc-flags` main.m -o hello `gnustep-config --base-libs`
+          ./hello
+      
+      - name: Test with GNUmakefile
+        run: |
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
+          
+          # Create a simple project with GNUmakefile
+          mkdir -p TestApp
+          cd TestApp
+          
+          cat << 'EOF' > TestApp.m
+          #import <Foundation/Foundation.h>
+          
+          @interface TestClass : NSObject
+          - (void)sayHello;
+          @end
+          
+          @implementation TestClass
+          - (void)sayHello {
+            NSLog(@"Hello from TestClass!");
+          }
+          @end
+          
+          int main(int argc, const char *argv[]) {
+            @autoreleasepool {
+              TestClass *test = [[TestClass alloc] init];
+              [test sayHello];
+              
+              // Test ARC
+              NSMutableArray *array = [NSMutableArray array];
+              for (int i = 0; i < 5; i++) {
+                [array addObject:[NSString stringWithFormat:@"Item %d", i]];
+              }
+              NSLog(@"Array contents: %@", array);
+            }
+            return 0;
+          }
+          EOF
+          
+          cat << 'EOF' > GNUmakefile
+          include $(GNUSTEP_MAKEFILES)/common.make
+          
+          TOOL_NAME = TestApp
+          TestApp_OBJC_FILES = TestApp.m
+          TestApp_OBJCFLAGS = -fobjc-arc
+          
+          include $(GNUSTEP_MAKEFILES)/tool.make
+          EOF
+          
+          make
+          ./obj/TestApp
