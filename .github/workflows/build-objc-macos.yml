@@ -9,10 +9,13 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
-      - name: Check Xcode version
+      - name: Check Xcode version and install SDL2
         run: |
           xcodebuild -version
           clang --version
+          
+          # Install SDL2 and SDL2_ttf via Homebrew
+          brew install sdl2 sdl2_ttf
       
       - name: Build Hello World
         run: |
@@ -90,6 +93,35 @@ jobs:
           echo "=== Testing packaged executable ==="
           cd package
           ./hello && echo "✓ Packaged executable works!" || echo "✗ Packaged executable failed"
+      
+      - name: Build SDL2 Hello World
+        run: |
+          echo "=== Building SDL2 Hello World for macOS ==="
+          
+          # Get SDL2 paths from Homebrew
+          SDL2_PATH=$(brew --prefix sdl2)
+          SDL2_TTF_PATH=$(brew --prefix sdl2_ttf)
+          
+          echo "SDL2 path: $SDL2_PATH"
+          echo "SDL2_ttf path: $SDL2_TTF_PATH"
+          
+          # Build SDL2 Hello World
+          clang -framework Foundation \
+                -I"$SDL2_PATH/include" \
+                -I"$SDL2_TTF_PATH/include" \
+                -L"$SDL2_PATH/lib" \
+                -L"$SDL2_TTF_PATH/lib" \
+                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
+                -o sdl_hello \
+                -lSDL2 -lSDL2_ttf
+          
+          echo "=== Checking SDL2 executable ==="
+          file sdl_hello
+          ls -la sdl_hello
+          otool -L sdl_hello
+          
+          echo "=== SDL2 Hello World built successfully ==="
+          echo "Note: GUI application requires display - would need virtual display for testing"
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

@@ -1,0 +1,15 @@
+include $(GNUSTEP_MAKEFILES)/common.make
+
+TOOL_NAME = SDL2HelloWorld
+SDL2HelloWorld_OBJC_FILES = \
+	SDLWindow.m \
+	SDLRenderer.m \
+	TextRenderer.m \
+	HelloWorldApp.m \
+	sdl_main.m
+
+SDL2HelloWorld_OBJCFLAGS = -fobjc-arc
+SDL2HelloWorld_CPPFLAGS = -I/usr/include/SDL2 -I/mingw64/include/SDL2
+SDL2HelloWorld_LDFLAGS = -lSDL2 -lSDL2_ttf
+
+include $(GNUSTEP_MAKEFILES)/tool.make

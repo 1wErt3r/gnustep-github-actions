@@ -38,7 +38,9 @@ jobs:
             libfreetype6-dev \
             libcairo2-dev \
             libxt-dev \
-            libgl1-mesa-dev
+            libgl1-mesa-dev \
+            libsdl2-dev \
+            libsdl2-ttf-dev
       
       - name: Build and install libobjc2
         run: |
@@ -121,3 +123,32 @@ jobs:
           
           make
           ./obj/HelloApp
+      
+      - name: Test SDL2 Hello World
+        run: |
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
+          
+          # Build SDL2 Hello World with direct compilation
+          echo "=== Building SDL2 Hello World with clang ==="
+          clang `gnustep-config --objc-flags` \
+                -I/usr/include/SDL2 \
+                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
+                -o sdl_hello \
+                `gnustep-config --base-libs` \
+                -lSDL2 -lSDL2_ttf
+          
+          echo "=== Checking SDL2 executable ==="
+          file sdl_hello
+          ls -la sdl_hello
+          
+          echo "=== SDL2 Hello World built successfully ==="
+          echo "Note: GUI application requires display - would run in headless environment"
+          
+          # Test with GNUmakefile
+          echo "=== Building with GNUmakefile ==="
+          cp GNUmakefile.sdl GNUmakefile
+          make clean
+          make
+          
+          echo "=== SDL2 GNUmakefile build complete ==="
+          ls -la obj/SDL2HelloWorld

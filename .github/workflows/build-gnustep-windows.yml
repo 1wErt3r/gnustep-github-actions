@@ -20,6 +20,8 @@ jobs:
             mingw-w64-x86_64-libobjc2
             mingw-w64-x86_64-gnustep-base
             mingw-w64-x86_64-gnustep-make
+            mingw-w64-x86_64-SDL2
+            mingw-w64-x86_64-SDL2_ttf
             make
       
       - name: Check GNUstep Installation
@@ -232,3 +234,29 @@ jobs:
           
           Write-Host "`nPackage directory contents:"
           Get-ChildItem -Path "package" | Format-Table Name, Length, LastWriteTime
+      
+      - name: Build SDL2 Hello World
+        shell: msys2 {0}
+        run: |
+          # Source GNUstep environment
+          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
+              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
+          fi
+          
+          echo "=== Building SDL2 Hello World ==="
+          clang `gnustep-config --objc-flags` \
+                -I/mingw64/include/SDL2 \
+                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
+                -o sdl_hello.exe \
+                `gnustep-config --base-libs` \
+                -lSDL2 -lSDL2_ttf
+          
+          echo "=== Checking SDL2 executable ==="
+          file sdl_hello.exe
+          ls -la sdl_hello.exe
+          
+          echo "=== Checking SDL2 dependencies ==="
+          ldd sdl_hello.exe | head -20
+          
+          echo "=== SDL2 Hello World built successfully ==="
+          echo "Note: GUI application requires display - would need X11 forwarding or virtual display"
