@@ -58,41 +58,15 @@ jobs:
           gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES
           gnustep-config --variable=GNUSTEP_LOCAL_LIBRARIES
       
-      - name: Create Hello World
+      - name: Prepare Hello World
         shell: msys2 {0}
         run: |
           mkdir -p hello
           cd hello
           
-          cat << 'EOF' > main.m
-          #import <Foundation/Foundation.h>
-          
-          int main(int argc, const char * argv[]) {
-              @autoreleasepool {
-                  NSLog(@"Hello, World from GNUstep on Windows!");
-                  
-                  // Test some basic Foundation functionality
-                  NSDate *now = [NSDate date];
-                  NSLog(@"Current date: %@", now);
-                  
-                  NSArray *items = @[@"GNUstep", @"on", @"Windows", @"with", @"MSYS2"];
-                  NSString *message = [items componentsJoinedByString:@" "];
-                  NSLog(@"Message: %@", message);
-                  
-                  // Test dictionary
-                  NSDictionary *info = @{
-                      @"Platform": @"Windows",
-                      @"Runtime": @"libobjc2",
-                      @"Compiler": @"Clang"
-                  };
-                  
-                  [info enumerateKeysAndObjectsUsingBlock:^(id key, id obj, BOOL *stop) {
-                      NSLog(@"%@: %@", key, obj);
-                  }];
-              }
-              return 0;
-          }
-          EOF
+          # Copy shared source files
+          cp ../hello.h .
+          cp ../hello.m .
 
       - name: Compile with gnustep-config
         shell: msys2 {0}
@@ -114,7 +88,7 @@ jobs:
           which ld.lld || echo "ld.lld not found"
           
           echo -e "\n=== Attempting compilation ==="
-          clang -o hello.exe `gnustep-config --objc-flags` `gnustep-config --base-libs` main.m
+          clang -o hello.exe `gnustep-config --objc-flags` `gnustep-config --base-libs` hello.m
           
           echo -e "\n=== Checking executable ==="
           file hello.exe

@@ -93,77 +93,31 @@ jobs:
         run: |
           . /usr/share/GNUstep/Makefiles/GNUstep.sh
           
-          cat << 'EOF' > main.m
-          #import <Foundation/Foundation.h>
-          
-          int main(int argc, const char * argv[]) {
-            @autoreleasepool {
-              NSLog(@"Hello, World!");
-              
-              // Test some basic Foundation functionality
-              NSString *str = @"GNUstep is working!";
-              NSLog(@"Message: %@", str);
-              
-              NSArray *array = @[@"One", @"Two", @"Three"];
-              NSLog(@"Array count: %lu", (unsigned long)[array count]);
-              
-              NSDictionary *dict = @{@"key": @"value", @"number": @42};
-              NSLog(@"Dictionary: %@", dict);
-            }
-            return 0;
-          }
-          EOF
-          
-          # Compile and run
-          clang `gnustep-config --objc-flags` main.m -o hello `gnustep-config --base-libs`
+          # Compile and run the shared hello.m
+          clang `gnustep-config --objc-flags` hello.m -o hello `gnustep-config --base-libs`
           ./hello
       
       - name: Test with GNUmakefile
         run: |
           . /usr/share/GNUstep/Makefiles/GNUstep.sh
           
-          # Create a simple project with GNUmakefile
+          # Create a simple project with GNUmakefile using shared files
           mkdir -p TestApp
           cd TestApp
           
-          cat << 'EOF' > TestApp.m
-          #import <Foundation/Foundation.h>
-          
-          @interface TestClass : NSObject
-          - (void)sayHello;
-          @end
-          
-          @implementation TestClass
-          - (void)sayHello {
-            NSLog(@"Hello from TestClass!");
-          }
-          @end
-          
-          int main(int argc, const char *argv[]) {
-            @autoreleasepool {
-              TestClass *test = [[TestClass alloc] init];
-              [test sayHello];
-              
-              // Test ARC
-              NSMutableArray *array = [NSMutableArray array];
-              for (int i = 0; i < 5; i++) {
-                [array addObject:[NSString stringWithFormat:@"Item %d", i]];
-              }
-              NSLog(@"Array contents: %@", array);
-            }
-            return 0;
-          }
-          EOF
+          # Copy shared source files
+          cp ../hello.h .
+          cp ../hello.m .
           
           cat << 'EOF' > GNUmakefile
           include $(GNUSTEP_MAKEFILES)/common.make
           
-          TOOL_NAME = TestApp
-          TestApp_OBJC_FILES = TestApp.m
-          TestApp_OBJCFLAGS = -fobjc-arc
+          TOOL_NAME = HelloApp
+          HelloApp_OBJC_FILES = hello.m
+          HelloApp_OBJCFLAGS = -fobjc-arc
           
           include $(GNUSTEP_MAKEFILES)/tool.make
           EOF
           
           make
-          ./obj/TestApp
+          ./obj/HelloApp
