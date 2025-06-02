@@ -131,6 +131,7 @@ jobs:
           # Build SDL2 Hello World with direct compilation
           echo "=== Building SDL2 Hello World with clang ==="
           clang `gnustep-config --objc-flags` \
+                -fobjc-arc \
                 -I/usr/include/SDL2 \
                 SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
                 -o sdl_hello \
