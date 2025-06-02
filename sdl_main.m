@@ -2,6 +2,7 @@
 #import "HelloWorldApp.h"
 
 #ifdef _WIN32
+#import <windows.h>
 int SDL_main(int argc, char * argv[]) {
 #else
 int main(int argc, const char * argv[]) {
