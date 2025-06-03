@@ -1,28 +1,20 @@
-name: Build GNUstep / SDL2HelloWorld (Windows)
-
-on:
-  push:
-  pull_request:
+name: GNUstep Hello World - Windows MSYS2
+on: [push, pull_request]
 
 jobs:
-  build-windows:
+  hello-world:
     runs-on: windows-latest
-
+    
     steps:
-      #-------------------------------------------------------------
-      # 1.  Checkout the repository
-      #-------------------------------------------------------------
-      - uses: actions/checkout@v3
-
-      #-------------------------------------------------------------
-      # 2.  MSYS2 environment with Clang, libobjc2, GNUstep, SDL2
-      #-------------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v3
+      
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          release: false          # always grab the latest MSYS2
           update: true
-          install: >-
+          msystem: MINGW64
+          install: |
             mingw-w64-x86_64-clang
             mingw-w64-x86_64-lld
             mingw-w64-x86_64-libobjc2
@@ -30,35 +22,67 @@ jobs:
             mingw-w64-x86_64-gnustep-make
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-SDL2_ttf
-            mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-pkgconf
-
-      #-------------------------------------------------------------
-      # 3.  Configure & build with Clang and lld
-      #-------------------------------------------------------------
-      - name: Configure & Build
+            make
+      
+      - name: Check GNUstep Installation
         shell: msys2 {0}
         run: |
-          # Make a fresh build directory
-          cmake -S . -B build -G "Unix Makefiles" \
-                -DCMAKE_BUILD_TYPE=Release \
-                -DCMAKE_C_COMPILER=clang \
-                -DCMAKE_CXX_COMPILER=clang++ \
-                -DCMAKE_OBJC_COMPILER=clang \
-                -DCMAKE_OBJC_FLAGS="-fobjc-arc -fobjc-runtime=gnustep-2.1" \
-                -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
-          cmake --build build --parallel
-
-      #-------------------------------------------------------------
-      # 4.  Smoke-test and archive the artefact
-      #-------------------------------------------------------------
-      - name: Check executable
+          echo "=== Checking GNUstep installation ==="
+          
+          # Source GNUstep environment if available
+          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
+              echo "Sourcing GNUstep environment..."
+              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
+          fi
+          
+          # Check compilers
+          echo "Clang version:"
+          clang --version
+          
+          # Check for gnustep-config
+          echo -e "\ngnustep-config location:"
+          which gnustep-config
+          
+          # Check GNUstep configuration
+          echo -e "\nGNUstep configuration:"
+          gnustep-config --help
+          
+          # Show objc flags
+          echo -e "\nObjective-C flags:"
+          gnustep-config --objc-flags
+          
+          # Show base libs
+          echo -e "\nBase libraries:"
+          gnustep-config --base-libs
+          
+          # Check GNUstep library path
+          echo -e "\nGNUstep library paths:"
+          gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES
+          gnustep-config --variable=GNUSTEP_LOCAL_LIBRARIES
+      
+      - name: Build SDL2 Hello World
         shell: msys2 {0}
         run: |
-          file build/SDL2HelloWorld.exe
-          ls -lh build/SDL2HelloWorld.exe
-
-      - uses: actions/upload-artifact@v4
-        with:
-          name: SDL2HelloWorld-windows
-          path: build/SDL2HelloWorld.exe
+          # Source GNUstep environment
+          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
+              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
+          fi
+          
+          echo "=== Building SDL2 Hello World ==="
+          clang `gnustep-config --objc-flags` \
+                -fobjc-arc \
+                -I/mingw64/include/SDL2 \
+                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
+                -o sdl_hello.exe \
+                `gnustep-config --base-libs` \
+                -lSDL2main -lSDL2 -lSDL2_ttf
+          
+          echo "=== Checking SDL2 executable ==="
+          file sdl_hello.exe
+          ls -la sdl_hello.exe
+          
+          echo "=== Checking SDL2 dependencies ==="
+          ldd sdl_hello.exe | head -20
+          
+          echo "=== SDL2 Hello World built successfully ==="
+          echo "Note: GUI application requires display - would need X11 forwarding or virtual display"

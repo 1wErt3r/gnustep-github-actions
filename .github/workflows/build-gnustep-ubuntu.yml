@@ -110,16 +110,3 @@ jobs:
           echo "=== Checking SDL2 executable ==="
           file SDL2HelloWorld
           ls -la SDL2HelloWorld
-          
-          echo "=== SDL2 Hello World built successfully ==="
-          echo "Note: GUI application requires display - would run in headless environment"
-          
-          # Also test with GNUmakefile for compatibility
-          cd ..
-          echo "=== Building with GNUmakefile (legacy) ==="
-          . /usr/share/GNUstep/Makefiles/GNUstep.sh
-          make clean
-          make
-          
-          echo "=== SDL2 GNUmakefile build complete ==="
-          ls -la obj/SDL2HelloWorld
