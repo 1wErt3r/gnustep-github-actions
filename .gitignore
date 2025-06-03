@@ -11,6 +11,9 @@
 *.exe
 obj/
 build/
+libobjc2/
+libs-base/
+tools-make/
 
 # macOS
 .DS_Store

@@ -1,20 +1,28 @@
-name: GNUstep Hello World - Windows MSYS2
-on: [push, pull_request]
+name: Build GNUstep / SDL2HelloWorld (Windows)
+
+on:
+  push:
+  pull_request:
 
 jobs:
-  hello-world:
+  build-windows:
     runs-on: windows-latest
-    
+
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      
+      #-------------------------------------------------------------
+      # 1.  Checkout the repository
+      #-------------------------------------------------------------
+      - uses: actions/checkout@v3
+
+      #-------------------------------------------------------------
+      # 2.  MSYS2 environment with Clang, libobjc2, GNUstep, SDL2
+      #-------------------------------------------------------------
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
+          release: false          # always grab the latest MSYS2
           update: true
-          msystem: MINGW64
-          install: |
+          install: >-
             mingw-w64-x86_64-clang
             mingw-w64-x86_64-lld
             mingw-w64-x86_64-libobjc2
@@ -22,242 +30,35 @@ jobs:
             mingw-w64-x86_64-gnustep-make
             mingw-w64-x86_64-SDL2
             mingw-w64-x86_64-SDL2_ttf
-            make
-      
-      - name: Check GNUstep Installation
-        shell: msys2 {0}
-        run: |
-          echo "=== Checking GNUstep installation ==="
-          
-          # Source GNUstep environment if available
-          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
-              echo "Sourcing GNUstep environment..."
-              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
-          fi
-          
-          # Check compilers
-          echo "Clang version:"
-          clang --version
-          
-          # Check for gnustep-config
-          echo -e "\ngnustep-config location:"
-          which gnustep-config
-          
-          # Check GNUstep configuration
-          echo -e "\nGNUstep configuration:"
-          gnustep-config --help
-          
-          # Show objc flags
-          echo -e "\nObjective-C flags:"
-          gnustep-config --objc-flags
-          
-          # Show base libs
-          echo -e "\nBase libraries:"
-          gnustep-config --base-libs
-          
-          # Check GNUstep library path
-          echo -e "\nGNUstep library paths:"
-          gnustep-config --variable=GNUSTEP_SYSTEM_LIBRARIES
-          gnustep-config --variable=GNUSTEP_LOCAL_LIBRARIES
-      
-      - name: Prepare Hello World
-        shell: msys2 {0}
-        run: |
-          mkdir -p hello
-          cd hello
-          
-          # Copy shared source files
-          cp ../hello.h .
-          cp ../hello.m .
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkgconf
 
-      - name: Compile with gnustep-config
+      #-------------------------------------------------------------
+      # 3.  Configure & build with Clang and lld
+      #-------------------------------------------------------------
+      - name: Configure & Build
         shell: msys2 {0}
         run: |
-          # Source GNUstep environment
-          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
-              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
-          fi
-          
-          cd hello
-          
-          echo "=== Checking what gnustep-config outputs ==="
-          echo "Objc flags: $(gnustep-config --objc-flags)"
-          echo "Base libs: $(gnustep-config --base-libs)"
-          
-          echo -e "\n=== Checking available linkers ==="
-          which ld || echo "ld not found"
-          which lld || echo "lld not found"
-          which ld.lld || echo "ld.lld not found"
-          
-          echo -e "\n=== Attempting compilation ==="
-          clang -o hello.exe `gnustep-config --objc-flags` `gnustep-config --base-libs` hello.m
-          
-          echo -e "\n=== Checking executable ==="
-          file hello.exe
-          ls -la hello.exe
-          
-          echo -e "\n=== Checking dependencies ==="
-          ldd hello.exe || echo "ldd failed"
-          
-          echo -e "\n=== Checking for missing DLLs ==="
-          # Check if all DLLs exist
-          ldd hello.exe | grep "not found" && echo "Missing DLLs detected!" || echo "All DLLs found"
-          
-          echo -e "\n=== Environment check ==="
-          echo "PATH: $PATH"
-          echo "LD_LIBRARY_PATH: $LD_LIBRARY_PATH"
-          echo "GNUSTEP_SYSTEM_LIBRARIES: $GNUSTEP_SYSTEM_LIBRARIES"
-          
-          echo -e "\n=== Attempting to run hello.exe ==="
-          if ./hello.exe; then
-              echo "Success!"
-          else
-              EXIT_CODE=$?
-              echo "Failed with exit code: $EXIT_CODE"
-              
-              echo -e "\n=== Trying to copy DLLs to current directory ==="
-              # Copy gnustep and objc DLLs
-              cp /mingw64/bin/*gnustep*.dll . 2>/dev/null || true
-              cp /mingw64/bin/*objc*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libiconv*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libintl*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libxml2*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libxslt*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libffi*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libgcc*.dll . 2>/dev/null || true
-              cp /mingw64/bin/libwinpthread*.dll . 2>/dev/null || true
-              
-              echo "DLLs in current directory:"
-              ls -la *.dll 2>/dev/null || echo "No DLLs copied"
-              
-              echo -e "\n=== Retrying execution ==="
-              ./hello.exe || echo "Still failed with exit code: $?"
-          fi
-      
-      - name: Create Package
+          # Make a fresh build directory
+          cmake -S . -B build -G "Unix Makefiles" \
+                -DCMAKE_BUILD_TYPE=Release \
+                -DCMAKE_C_COMPILER=clang \
+                -DCMAKE_CXX_COMPILER=clang++ \
+                -DCMAKE_OBJC_COMPILER=clang \
+                -DCMAKE_OBJC_FLAGS="-fobjc-arc -fobjc-runtime=gnustep-2.1" \
+                -DCMAKE_EXE_LINKER_FLAGS="-fuse-ld=lld"
+          cmake --build build --parallel
+
+      #-------------------------------------------------------------
+      # 4.  Smoke-test and archive the artefact
+      #-------------------------------------------------------------
+      - name: Check executable
         shell: msys2 {0}
         run: |
-          # Source GNUstep environment
-          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
-              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
-          fi
-          
-          mkdir -p package
-          
-          # Copy executables if they exist
-          if [ -f hello/hello.exe ]; then
-              cp hello/hello.exe package/
-          fi
-          
-          # Copy all DLLs from hello directory if any were copied there
-          if ls hello/*.dll >/dev/null 2>&1; then
-              cp hello/*.dll package/
-          fi
-          
-          # Copy required DLLs based on ldd output
-          echo "Copying required DLLs..."
-          for exe in package/*.exe; do
-              if [ -f "$exe" ]; then
-                  echo "Checking dependencies for $(basename $exe)"
-                  ldd "$exe" | grep mingw64 | awk '{print $3}' | while read dll; do
-                      if [ -f "$dll" ] && [ ! -f "package/$(basename $dll)" ]; then
-                          echo "  Copying $(basename $dll)"
-                          cp "$dll" package/
-                      fi
-                  done
-              fi
-          done
-          
-          # Create a batch file to run the executables on Windows
-          cat << 'EOF' > package/run-hello.bat
-          @echo off
-          echo Running GNUstep Hello World...
-          hello.exe
-          pause
-          EOF
-          
-          # Create README
-          cat << 'EOF' > package/README.txt
-          GNUstep Hello World for Windows
-          ================================
-          
-          This package contains a simple GNUstep application built with MSYS2/MinGW64.
-          
-          Files:
-          - hello.exe: Built with direct clang compilation
-          - hello-gnumake.exe: Built with GNUmakefile
-          - *.dll: Required runtime libraries
-          - run-hello.bat: Double-click to run the demo
-          
-          Requirements:
-          - Windows 64-bit
-          - All required DLLs are included
-          
-          If the executable fails to run, ensure all DLLs are in the same directory
-          as the .exe file or in your system PATH.
-          EOF
-          
-          # List package contents
-          echo -e "\nPackage contents:"
-          ls -la package/
-          
-          # Test if executables work in package directory
-          echo -e "\n=== Testing packaged executables ==="
-          cd package
-          if [ -f hello.exe ]; then
-              echo "Testing hello.exe in package directory..."
-              ./hello.exe && echo "✓ hello.exe works!" || echo "✗ hello.exe failed"
-          fi
-      
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v4
+          file build/SDL2HelloWorld.exe
+          ls -lh build/SDL2HelloWorld.exe
+
+      - uses: actions/upload-artifact@v4
         with:
-          name: gnustep-hello-world
-          path: package/
-      
-      - name: Test Package in Windows Environment
-        shell: pwsh
-        continue-on-error: true
-        run: |
-          Write-Host "=== Testing package in Windows PowerShell ==="
-          
-          if (Test-Path "package\hello.exe") {
-              Write-Host "Testing hello.exe..."
-              try {
-                  & "package\hello.exe"
-                  Write-Host "✓ hello.exe works in Windows environment!" -ForegroundColor Green
-              } catch {
-                  Write-Host "✗ hello.exe failed in Windows environment" -ForegroundColor Red
-                  Write-Host $_.Exception.Message
-             }
-          }
-          
-          Write-Host "`nPackage directory contents:"
-          Get-ChildItem -Path "package" | Format-Table Name, Length, LastWriteTime
-      
-      - name: Build SDL2 Hello World
-        shell: msys2 {0}
-        run: |
-          # Source GNUstep environment
-          if [ -f /mingw64/share/GNUstep/Makefiles/GNUstep.sh ]; then
-              . /mingw64/share/GNUstep/Makefiles/GNUstep.sh
-          fi
-          
-          echo "=== Building SDL2 Hello World ==="
-          clang `gnustep-config --objc-flags` \
-                -fobjc-arc \
-                -I/mingw64/include/SDL2 \
-                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
-                -o sdl_hello.exe \
-                `gnustep-config --base-libs` \
-                -lSDL2main -lSDL2 -lSDL2_ttf
-          
-          echo "=== Checking SDL2 executable ==="
-          file sdl_hello.exe
-          ls -la sdl_hello.exe
-          
-          echo "=== Checking SDL2 dependencies ==="
-          ldd sdl_hello.exe | head -20
-          
-          echo "=== SDL2 Hello World built successfully ==="
-          echo "Note: GUI application requires display - would need X11 forwarding or virtual display"
+          name: SDL2HelloWorld-windows
+          path: build/SDL2HelloWorld.exe

@@ -1,4 +1,5 @@
 #import "TextRenderer.h"
+#include "assets/font.h"
 
 @implementation TextRenderer
 
@@ -18,14 +19,21 @@
 }
 
 - (BOOL)loadFont {
-    if (_font != NULL) {
-        return YES;
+    // Load font from embedded memory instead of file
+    SDL_RWops* fontBuffer = SDL_RWFromConstMem(
+        HarmonyOS_Sans_SC_Regular_ttf,
+        sizeof(HarmonyOS_Sans_SC_Regular_ttf)
+    );
+    
+    if (!fontBuffer) {
+        NSLog(@"Failed to create font buffer: %s", SDL_GetError());
+        return NO;
     }
     
-    _font = TTF_OpenFont([_fontPath UTF8String], (int)_fontSize);
+    _font = TTF_OpenFontRW(fontBuffer, 1, (int)_fontSize);
     
     if (_font == NULL) {
-        NSLog(@"Failed to load font %@: %s", _fontPath, TTF_GetError());
+        NSLog(@"Failed to load embedded font: %s", TTF_GetError());
         return NO;
     }
     

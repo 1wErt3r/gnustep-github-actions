@@ -38,17 +38,7 @@
         return NO;
     }
     
-    NSString *fontPath = @"/System/Library/Fonts/Arial.ttf";
-    if (![[NSFileManager defaultManager] fileExistsAtPath:fontPath]) {
-        fontPath = @"/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf";
-        if (![[NSFileManager defaultManager] fileExistsAtPath:fontPath]) {
-            fontPath = @"/Windows/Fonts/arial.ttf";
-            if (![[NSFileManager defaultManager] fileExistsAtPath:fontPath]) {
-                NSLog(@"No suitable font found, using fallback");
-                fontPath = nil;
-            }
-        }
-    }
+    NSString *fontPath = @"/home/nights/repos/gnustep-github-actions/HarmonyOS_Sans_Regular.ttf";
     
     if (fontPath) {
         _textRenderer = [[TextRenderer alloc] initWithRenderer:_renderer fontPath:fontPath fontSize:24];

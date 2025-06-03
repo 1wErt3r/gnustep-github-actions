@@ -51,10 +51,17 @@ jobs:
             -DCMAKE_BUILD_TYPE=RelWithDebInfo \
             -DCMAKE_C_COMPILER=clang \
             -DCMAKE_CXX_COMPILER=clang++ \
-            -DCMAKE_INSTALL_PREFIX=/usr
+            -DCMAKE_INSTALL_PREFIX=/usr \
+            -DCMAKE_INSTALL_LIBDIR=lib
           make -j$(nproc)
           sudo make install
           sudo ldconfig
+          
+          # Check where libobjc2 was installed
+          echo "=== Checking libobjc2 installation ==="
+          find /usr -name "libobjc.so*" -type f 2>/dev/null | head -10
+          echo "=== ldconfig check ==="
+          ldconfig -p | grep objc
       
       - name: Build and install GNUstep Make
         run: |
@@ -91,63 +98,26 @@ jobs:
           sudo make install
           sudo ldconfig
       
-      - name: Test Hello World
+      - name: Test SDL2 Hello World with CMake
         run: |
-          . /usr/share/GNUstep/Makefiles/GNUstep.sh
-          
-          # Compile and run the shared hello.m
-          clang `gnustep-config --objc-flags` hello.m -o hello `gnustep-config --base-libs`
-          ./hello
-      
-      - name: Test with GNUmakefile
-        run: |
-          . /usr/share/GNUstep/Makefiles/GNUstep.sh
-          
-          # Create a simple project with GNUmakefile using shared files
-          mkdir -p TestApp
-          cd TestApp
-          
-          # Copy shared source files
-          cp ../hello.h .
-          cp ../hello.m .
-          
-          cat << 'EOF' > GNUmakefile
-          include $(GNUSTEP_MAKEFILES)/common.make
-          
-          TOOL_NAME = HelloApp
-          HelloApp_OBJC_FILES = hello.m
-          HelloApp_OBJCFLAGS = -fobjc-arc
-          
-          include $(GNUSTEP_MAKEFILES)/tool.make
-          EOF
-          
-          make
-          ./obj/HelloApp
-      
-      - name: Test SDL2 Hello World
-        run: |
-          . /usr/share/GNUstep/Makefiles/GNUstep.sh
-          
-          # Build SDL2 Hello World with direct compilation
-          echo "=== Building SDL2 Hello World with clang ==="
-          clang `gnustep-config --objc-flags` \
-                -fobjc-arc \
-                -I/usr/include/SDL2 \
-                SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
-                -o sdl_hello \
-                `gnustep-config --base-libs` \
-                -lSDL2 -lSDL2_ttf
+          # Build SDL2 Hello World with CMake
+          echo "=== Building SDL2 Hello World with CMake ==="
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j$(nproc)
           
           echo "=== Checking SDL2 executable ==="
-          file sdl_hello
-          ls -la sdl_hello
+          file SDL2HelloWorld
+          ls -la SDL2HelloWorld
           
           echo "=== SDL2 Hello World built successfully ==="
           echo "Note: GUI application requires display - would run in headless environment"
           
-          # Test with GNUmakefile
-          echo "=== Building with GNUmakefile ==="
-          cp GNUmakefile.sdl GNUmakefile
+          # Also test with GNUmakefile for compatibility
+          cd ..
+          echo "=== Building with GNUmakefile (legacy) ==="
+          . /usr/share/GNUstep/Makefiles/GNUstep.sh
           make clean
           make
           

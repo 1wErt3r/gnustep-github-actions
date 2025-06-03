@@ -17,95 +17,60 @@ jobs:
           # Install SDL2 and SDL2_ttf via Homebrew
           brew install sdl2 sdl2_ttf
       
-      - name: Build Hello World
+      - name: Build SDL2 Hello World with CMake
         run: |
-          # Compile using native macOS Objective-C runtime
-          clang -framework Foundation hello.m -o hello
+          echo "=== Building SDL2 Hello World with CMake ==="
           
-          echo "=== Checking executable ==="
-          file hello
-          ls -la hello
-      
-      - name: Run Hello World
-        run: |
-          echo "=== Running hello application ==="
-          ./hello
-      
-      - name: Test with Xcode project
-        run: |
-          # Create a simple Xcode project structure
-          mkdir -p HelloWorldApp
-          cd HelloWorldApp
+          # Build with CMake (command line)
+          mkdir -p build
+          cd build
+          cmake ..
+          make -j$(sysctl -n hw.ncpu)
           
-          # Copy shared source files
-          cp ../hello.h .
-          cp ../hello.m .
-          
-          # Build with clang directly
-          clang -framework Foundation hello.m -o HelloWorldApp
-          
-          echo "=== Running HelloWorldApp ==="
-          ./HelloWorldApp
-      
-      - name: Create Package
-        run: |
-          mkdir -p package
-          
-          # Copy executables
-          cp hello package/
-          if [ -f HelloWorldApp/HelloWorldApp ]; then
-              cp HelloWorldApp/HelloWorldApp package/HelloWorldApp
+          echo "=== Checking SDL2 executable ==="
+          # On macOS, CMake creates an app bundle
+          if [ -d SDL2HelloWorld.app ]; then
+              echo "Found app bundle:"
+              ls -la SDL2HelloWorld.app/Contents/MacOS/SDL2HelloWorld
+              file SDL2HelloWorld.app/Contents/MacOS/SDL2HelloWorld
+              otool -L SDL2HelloWorld.app/Contents/MacOS/SDL2HelloWorld
+          elif [ -f SDL2HelloWorld ]; then
+              echo "Found standalone executable:"
+              file SDL2HelloWorld
+              ls -la SDL2HelloWorld
+              otool -L SDL2HelloWorld
+          else
+              echo "No executable found, checking build directory:"
+              find . -name "SDL2HelloWorld*" -type f -o -type d | head -10
           fi
           
-          # Create a shell script to run the app
-          cat << 'EOF' > package/run-hello.sh
-          #!/bin/bash
-          echo "Running Objective-C Hello World on macOS..."
-          ./hello
-          echo "Done!"
-          EOF
-          chmod +x package/run-hello.sh
+          echo "=== SDL2 Hello World built successfully with CMake ==="
           
-          # Create README
-          cat << 'EOF' > package/README.txt
-          Objective-C Hello World for macOS
-          ==================================
+          # Also generate Xcode project
+          cd ..
+          mkdir -p build-xcode
+          cd build-xcode
+          echo -e "\n=== Generating Xcode project ==="
+          cmake -G Xcode ..
           
-          This package contains a simple Objective-C application built with native macOS Foundation framework.
+          echo "=== Xcode project generated ==="
+          ls -la
           
-          Files:
-          - hello: Built with clang and Foundation framework
-          - HelloWorldApp: Alternative build from subdirectory
-          - run-hello.sh: Shell script to run the demo
+          # Build with xcodebuild
+          echo -e "\n=== Building with xcodebuild ==="
+          xcodebuild -project SDL2HelloWorld.xcodeproj -configuration Release
           
-          Requirements:
-          - macOS (uses native Foundation framework)
+          echo "=== Checking Xcode-built executable ==="
+          find . -name SDL2HelloWorld -type f -perm +111
           
-          To run:
-          ./hello
-          or
-          ./run-hello.sh
-          EOF
-          
-          echo "=== Package contents ==="
-          ls -la package/
-          
-          echo "=== Testing packaged executable ==="
-          cd package
-          ./hello && echo "✓ Packaged executable works!" || echo "✗ Packaged executable failed"
-      
-      - name: Build SDL2 Hello World
-        run: |
-          echo "=== Building SDL2 Hello World for macOS ==="
+          # Also test direct compilation for comparison
+          cd ..
+          echo -e "\n=== Building SDL2 Hello World with direct compilation (legacy) ==="
           
           # Get SDL2 paths from Homebrew
           SDL2_PATH=$(brew --prefix sdl2)
           SDL2_TTF_PATH=$(brew --prefix sdl2_ttf)
           
-          echo "SDL2 path: $SDL2_PATH"
-          echo "SDL2_ttf path: $SDL2_TTF_PATH"
-          
-          # Build SDL2 Hello World with ARC
           clang -framework Foundation \
                 -fobjc-arc \
                 -I"$SDL2_PATH/include/SDL2" \
@@ -113,19 +78,61 @@ jobs:
                 -L"$SDL2_PATH/lib" \
                 -L"$SDL2_TTF_PATH/lib" \
                 SDLWindow.m SDLRenderer.m TextRenderer.m HelloWorldApp.m sdl_main.m \
-                -o sdl_hello \
+                -o sdl_hello_direct \
                 -lSDL2 -lSDL2_ttf
           
-          echo "=== Checking SDL2 executable ==="
-          file sdl_hello
-          ls -la sdl_hello
-          otool -L sdl_hello
+          echo "=== Checking direct compilation executable ==="
+          file sdl_hello_direct
           
-          echo "=== SDL2 Hello World built successfully ==="
           echo "Note: GUI application requires display - would need virtual display for testing"
+      
+      - name: Create SDL2 Package
+        run: |
+          mkdir -p package
+          
+          # Copy SDL2 app bundle from CMake build (primary output on macOS)
+          if [ -d build/SDL2HelloWorld.app ]; then
+              cp -r build/SDL2HelloWorld.app package/
+          elif [ -f build/SDL2HelloWorld ]; then
+              # Fallback to plain executable if no bundle
+              cp build/SDL2HelloWorld package/
+          fi
+          
+          # Copy Xcode-built app if it exists
+          XCODE_APP=$(find build-xcode -name "SDL2HelloWorld.app" -type d | head -1)
+          if [ -n "$XCODE_APP" ] && [ -d "$XCODE_APP" ]; then
+              cp -r "$XCODE_APP" package/SDL2HelloWorld-Xcode.app
+          fi
+          
+          # Create README
+          cat << 'EOF' > package/README.txt
+          SDL2 Hello World for macOS
+          ==========================
+          
+          This package contains an SDL2-based Objective-C application built with CMake.
+          
+          Files:
+          - SDL2HelloWorld: Command-line executable built with CMake
+          - SDL2HelloWorld.app: macOS application bundle (if available)
+          - SDL2HelloWorld-Xcode.app: Application built with Xcode project
+          
+          Requirements:
+          - macOS
+          - SDL2 and SDL2_ttf (installed via Homebrew)
+          
+          To run:
+          ./SDL2HelloWorld
+          or
+          open SDL2HelloWorld.app
+          
+          Note: This is a graphical SDL2 application that requires a display.
+          EOF
+          
+          echo "=== Package contents ==="
+          ls -la package/
       
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: objc-hello-world-macos
+          name: sdl2-hello-world-macos
           path: package/
